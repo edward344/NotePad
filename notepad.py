@@ -4,116 +4,86 @@
 from Tkinter import *
 import tkMessageBox
 import os,sys
+from browser import Browser
 
-class Open_file(object):
-    def __init__(self,app):
-        self.top = Toplevel()
-        self.top.title("Open")
-        label = Label(self.top,text="Enter the file to open:")
+class Open_File(Browser):
+    def __init__(self,app,command_name):
+        Browser.__init__(self,app,command_name)
+        label = Label(self.top,text="Select the file/directory you want to open:")
         label.pack()
-        self.entry = Entry(self.top,width=60)
-        self.entry.insert(END,self.get_dir() + "/")
-        self.entry.pack()
-            
-        frame = Frame(self.top)
-        btn_open = Button(frame,text="Open",command=self.open_file)
-        btn_open.pack(side=LEFT)
-        btn_cancel = Button(frame,text="Cancel",command=self.top.destroy)
-        btn_cancel.pack(side=LEFT)
-        frame.pack()
+        self.pack()
         
-        self.app = app
-        
-    def get_dir(self):
-        s = os.getcwd()
+    def command_callback(self):
+        filename = self.get_filename()
         if sys.platform == "win32":
-            s = s.replace("\\","/")
-        return s
-        
-    def open_file(self):
-        self.app.text.delete("1.0",END)
-        name = self.entry.get()
-        if sys.platform == "win32":
-            if name[-4:] == ".txt":
+            if filename == "None":
+                tkMessageBox.showwarning("Open file","Please Select a file...")
+            elif filename[-4:] == ".txt":
+                self.app.text.delete("1.0",END)
                 try:
-                    f = open(name)
+                    f = open(filename)
                     
                     for line in f:
                         self.app.text.insert(END,line)
                     
                     f.close()
-                    
+                
                     self.app.new_file = False
-                    self.app.file_name = name
-                    self.app.master.title(name[name.rfind("/")+1:] + ": NotePad")
+                    self.app.file_name = filename
+                    self.app.master.title(filename[filename.rfind("/")+1:] + ": NotePad")
                     self.app.changed = False
                 except IOError:
                     tkMessageBox.showwarning("Open file","Cannot open this file...")
-                
-            else:
-                tkMessageBox.showwarning("Open file","Cannot open this file...")
+                self.top.destroy() # kill the window...    
         else:
-            try:
-                f = open(name)
+            if filename == "None":
+                tkMessageBox.showwarning("Open file","Please Select a file...")
+            elif filename != "Directory":
+                self.app.text.delete("1.0",END)
+                try:
+                    f = open(filename)
+                    
+                    for line in f:
+                        self.app.text.insert(END,line)
+                    
+                    f.close()
                 
-                for line in f:
-                    self.app.text.insert(END,line)
-                    
-                f.close()
-                    
-                self.app.new_file = False
-                self.app.file_name = name
-                self.app.master.title(name[name.rfind("/")+1:] + ": NotePad")
-                self.app.changed = False
-            except IOError:
-                tkMessageBox.showwarning("Open file","Cannot open this file...")
-            
-        self.top.destroy()
-        
-class Save_file(object):
-    def __init__(self,app):
-        self.top = Toplevel()
-        self.top.title("Save as")
-        label = Label(self.top,text="Enter the name of the file to save")
+                    self.app.new_file = False
+                    self.app.file_name = filename
+                    self.app.master.title(filename[filename.rfind("/")+1:] + ": NotePad")
+                    self.app.changed = False
+                except IOError:
+                    tkMessageBox.showwarning("Open file","Cannot open this file...")
+                self.top.destroy() # kill the window... 
+                
+class Save_File(Browser):
+    def __init__(self,app,command_name):
+        Browser.__init__(self,app,command_name)
+        label = Label(self.top,text="Enter the name of your file...")
         label.pack()
-        self.entry = Entry(self.top,width=60)
-        self.entry.insert(END,self.get_dir() + "/")
+        self.entry = Entry(self.top,width=30)
         self.entry.pack()
+        self.pack()
         
-        frame = Frame(self.top)
-        btn_open = Button(frame,text="Save",command=self.save_file)
-        btn_open.pack(side=LEFT)
-        btn_cancel = Button(frame,text="Cancel",command=self.top.destroy)
-        btn_cancel.pack(side=LEFT)
-        frame.pack()
-        
-        self.app = app
-        
-    def save_file(self):
-        name = self.entry.get()
-        if name[-1] != "/":
-            if name[-4:] != ".txt" and sys.platform == "win32":
-                name += ".txt"
+    def command_callback(self):
+        if self.get_filename() != "Directory":
+            if len(self.entry.get()) > 0:
+                filename = self.directory + "/" + self.entry.get()
+                if filename[-4:] != ".txt" and sys.platform == "win32":
+                    filename += ".txt"
+                
+                f = open(filename,"w")
+                text = self.app.text.get("1.0",END).encode("utf-8")
+                f.write(text)
+                f.close()
+                self.app.file_name = filename
+                self.app.master.title(filename[filename.rfind("/")+1:] + ": NotePad")
+                self.app.new_file = False
+                self.app.changed = False
+                self.top.destroy() #kill the window...
+            else:
+                tkMessageBox.showwarning("Save file","You have to name the file...")
             
-            f = open(name,"w")
-            text = self.app.text.get("1.0",END).encode("utf-8")
-            f.write(text)
-            f.close()
-            self.app.file_name = name
-            self.app.master.title(name[name.rfind("/")+1:] + ": NotePad")
-            self.app.new_file = False
-            self.app.changed = False
-            
-        else:
-            tkMessageBox.showwarning("Save file","You have to name the file...")
-        self.top.destroy()
-        
-    def get_dir(self):
-        s = os.getcwd()
-        if sys.platform == "win32":
-            s = s.replace("\\","/")
-        return s
-        
 
 class App(object):
     file_name = "Untitled"
@@ -157,7 +127,7 @@ class App(object):
         if self.changed:
             if tkMessageBox.askyesno("Quit","do you want to save the file..."):
                 if self.file_name == "Untitled":
-                    obj = Save_file(self)
+                    obj = Save_File(self,"Save as")
                 else:
                     f = open(self.file_name,"w")
                     text = self.text.get("1.0",END).encode("utf-8")
@@ -208,16 +178,33 @@ class App(object):
         except TclError:
             pass
             
+    #----------File menu commands:--------------------------------------
         
     def open_file_menu(self):
-        obj = Open_file(self)
-        
+        if self.changed:
+            if tkMessageBox.askyesno("Quit","do you want to save the file..."):
+                if self.file_name == "Untitled":
+                    obj = Save_File(self,"Save as")
+                else:
+                    f = open(self.file_name,"w")
+                    text = self.text.get("1.0",END).encode("utf-8")
+                    f.write(text)
+                    f.close()
+                    #---------------------------------------------------
+            self.text.delete("1.0",END)
+            self.file_name = "Untitled"
+            self.master.title("Untitled: NotePad")
+            self.changed = False
+        obj = Open_File(self,"Open")
+
     def save_as_file_menu(self):
-        obj = Save_file(self)
+        obj = Save_File(self,"Save")
+
+   #--------------------------------------------------------------------     
         
     def save_file_menu(self):
         if self.file_name == "Untitled":
-            obj = Save_file(self)
+            obj = Save_File(self,"Save as")
         else:
             f = open(self.file_name,"w")
             text = self.text.get("1.0",END).encode("utf-8")
@@ -227,6 +214,15 @@ class App(object):
             self.master.title(self.file_name[self.file_name.rfind("/")+1:] + ": NotePad")
 
     def new_file_menu(self):
+        if self.changed:
+            if tkMessageBox.askyesno("New","Do you want to save the file..."):
+                if self.file_name == "Untitled":
+                    obj = Save_File(self,"Save as")
+                else:
+                    f = open(self.file_name,"w")
+                    text = self.text.get("1.0",END).encode("utf-8")
+                    f.write(text)
+                    f.close()
         self.text.delete("1.0",END)
         self.file_name = "Untitled"
         self.master.title("Untitled: NotePad")
@@ -236,7 +232,7 @@ class App(object):
         if self.changed:
             if tkMessageBox.askyesno("Quit","do you want to save the file..."):
                 if self.file_name == "Untitled":
-                    obj = Save_file(self)
+                    obj = Save_File(self,"Save as")
                 else:
                     f = open(self.file_name,"w")
                     text = self.text.get("1.0",END).encode("utf-8")
