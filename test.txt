@@ -1,0 +1,2 @@
+This is a simple text editor written in the python programming language.
+
